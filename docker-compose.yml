@@ -21,6 +21,12 @@
 #   DEEPTUTOR_WORKSPACE_HOST=/absolute/host/folder python scripts/docker_compose.py up -d
 #   maps that folder to the stable in-container path /workspace. If omitted,
 #   ./data/user/workspace remains the default.
+#
+# Data directory:
+#   DEEPTUTOR_DATA_HOST=/absolute/host/folder moves the whole data tree
+#   (settings, KBs, redis, pocketbase) out of the checkout, so platforms
+#   that re-clone the repo on every deploy (e.g. Dokploy) keep it.
+#   If omitted, ./data remains the default.
 # ============================================
 
 services:
@@ -33,7 +39,7 @@ services:
     restart: unless-stopped
     command: ["redis-server", "--appendonly", "yes", "--appendfsync", "everysec"]
     volumes:
-      - ./data/redis:/data
+      - ${DEEPTUTOR_DATA_HOST:-./data}/redis:/data
     networks:
       - deeptutor-network
 
@@ -54,9 +60,9 @@ services:
       # --hooksDir=/pb_hooks. The previous example mounted at /pb/pb_data
       # and crashed on first start with "mkdir /pb_data: read-only file
       # system".
-      - ./data/pocketbase:/pb_data
-      - ./data/pocketbase/public:/pb_public
-      - ./data/pocketbase/hooks:/pb_hooks
+      - ${DEEPTUTOR_DATA_HOST:-./data}/pocketbase:/pb_data
+      - ${DEEPTUTOR_DATA_HOST:-./data}/pocketbase/public:/pb_public
+      - ${DEEPTUTOR_DATA_HOST:-./data}/pocketbase/hooks:/pb_hooks
     networks:
       - deeptutor-network
     healthcheck:
@@ -89,7 +95,7 @@ services:
       # data/system, which holds auth state, provider API keys, and per-owner
       # secrets. What it *does* carry for non-admin accounts is wider than
       # workspace subtrees — see the scope note on that service's own volumes.
-      - ./data:/app/data
+      - ${DEEPTUTOR_DATA_HOST:-./data}:/app/data
       - "${DEEPTUTOR_WORKSPACE_HOST:-./data/user/workspace}:/workspace"
 
     environment:
@@ -167,7 +173,7 @@ services:
       # be writable here: an escaped command that could overwrite an app's entry
       # point would run as that app in every later turn, for every account.
       # Installing writes it from the main container instead (services/cli_apps).
-      - ./data/cli-apps:/app/data/cli-apps:ro
+      - ${DEEPTUTOR_DATA_HOST:-./data}/cli-apps:/app/data/cli-apps:ro
 
     environment:
       - DEEPTUTOR_RUNNER_ALLOWED_WORKDIRS=/workspace/outputs
